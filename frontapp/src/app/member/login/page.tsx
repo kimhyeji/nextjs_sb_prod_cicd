@@ -8,19 +8,18 @@ export default function Login() {
   const [user, setUser] = useState({ username: '', password: '' })
   const router = useRouter()
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     await api
       .post('/members/login', user)
       .then(() => {
         alert('로그인 되었습니다')
-        // router.push("/");
         router.back()
       })
       .catch((err) => console.log(err))
   }
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setUser({ ...user, [name]: value })
   }

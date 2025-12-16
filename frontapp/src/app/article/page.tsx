@@ -5,31 +5,48 @@ import { useState } from 'react'
 import api from '@/src/utils/api'
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
 
+type ArticleRow = {
+  id: number
+  subject: string
+  author: string
+  createdDate: string
+}
+
+type ArticleFormData = {
+  subject: string
+  content: string
+}
+
 export default function Article() {
   const getArticles = async () => {
     return await api.get('/articles').then((res) => res.data.data.articles)
   }
 
-  const { isLoading, error, data } = useQuery({
+  const { isLoading, error, data } = useQuery<ArticleRow[]>({
     queryKey: ['articles'],
     queryFn: getArticles,
   })
 
-  const deleteArticle = async (id) => {
+  const deleteArticle = async (id: number | string) => {
     await api.delete(`/articles/${id}`)
   }
 
   const queryClient = useQueryClient()
-  const mutation = useMutation({
+  const mutation = useMutation<void, any, number | string>({
     mutationFn: deleteArticle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['articles'] })
     },
   })
 
-  if (error) console.log(error)
+  if (isLoading) return <>Loading....</>
 
-  if (isLoading) <>Loading....</>
+  if (error) {
+    console.log(error)
+    return <>에러 발생</>
+  }
+
+  if (!data) return null
 
   if (data) {
     return (
@@ -59,7 +76,7 @@ function ArticleForm() {
   const [article, setArticle] = useState({ subject: '', content: '' })
 
   const queryClient = useQueryClient()
-  const mutation = useMutation({
+  const mutation = useMutation<void, any, ArticleFormData>({
     mutationFn: (newArticle) => api.post('/articles', newArticle),
     onSuccess: () => {
       alert('success')
@@ -71,12 +88,12 @@ function ArticleForm() {
     },
   })
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     mutation.mutate(article)
   }
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setArticle({ ...article, [name]: value })
   }

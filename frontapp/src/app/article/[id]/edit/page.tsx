@@ -5,6 +5,11 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
+type ArticlePatch = {
+  subject: string
+  content: string
+}
+
 export default function ArticleEdit() {
   const params = useParams()
   const router = useRouter()
@@ -29,15 +34,21 @@ export default function ArticleEdit() {
   }, [data])
 
   const queryClient = useQueryClient()
-  const mutation = useMutation({
+  const mutation = useMutation<
+    unknown, // success response
+    any, // error
+    ArticlePatch // mutate에 넘길 데이터 타입 ⭐
+  >({
     mutationFn: (patchArticle) => api.patch(`/articles/${id}`, patchArticle),
+
     onSuccess: () => {
       alert('success')
       queryClient.invalidateQueries({ queryKey: ['article', id] })
       router.push(`/article/${id}`)
     },
+
     onError: (err: any) => {
-      if (err?.response?.status == 401) {
+      if (err?.response?.status === 401) {
         alert('로그인 후 이용해주세요')
         router.push('/member/login')
         return
@@ -46,19 +57,24 @@ export default function ArticleEdit() {
     },
   })
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     mutation.mutate(article)
   }
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setArticle({ ...article, [name]: value })
   }
 
-  if (error) console.log(error)
+  if (isLoading) return <>Loading....</>
 
-  if (isLoading) <>Loading....</>
+  if (error) {
+    console.log(error)
+    return <>에러 발생</>
+  }
+
+  if (!data) return null
 
   if (data) {
     return (
