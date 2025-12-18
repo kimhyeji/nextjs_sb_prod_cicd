@@ -20,6 +20,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
                         .requestMatchers(new AntPathRequestMatcher("/**")).permitAll())
+                .cors(cors -> {})
                 .csrf(
                         csrf -> csrf
                                 .ignoringRequestMatchers("/h2-console/**")
@@ -39,5 +40,25 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+        var config = new org.springframework.web.cors.CorsConfiguration();
+        config.setAllowedOrigins(
+                java.util.List.of(
+                        "https://hj-yee.shop",
+                        "http://localhost:3000"
+                )
+        );
+        config.setAllowedMethods(
+                java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        );
+        config.setAllowedHeaders(java.util.List.of("*"));
+        config.setAllowCredentials(true);
+
+        var source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", config);
+        return source;
     }
 }
