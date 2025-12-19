@@ -122,11 +122,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           instance-ids: ${{ secrets.AWS_EC2_INSTANCE_ID }}
           command: |
+            set -Eeuo pipefail
+
+            OWNER_LC="${{ github.repository_owner }}"
+            OWNER_LC="${OWNER_LC,,}"
+
+            BACK_IMAGE="ghcr.io/${OWNER_LC}/blog-back:latest"
+            FRONT_IMAGE="ghcr.io/${OWNER_LC}/blog-front:latest"
+
+            echo "BACK_IMAGE=$BACK_IMAGE"
+            echo "FRONT_IMAGE=$FRONT_IMAGE"
+
+            docker pull "$BACK_IMAGE"
+            docker pull "$FRONT_IMAGE"
+
             docker stop blog-back blog-front || true
             docker rm blog-back blog-front || true
-
-            docker pull ghcr.io/${{ env.OWNER_LC }}/blog-back:latest
-            docker pull ghcr.io/${{ env.OWNER_LC }}/blog-front:latest
 
             docker run -d \
               --name blog-back \
@@ -134,11 +145,11 @@ jobs:
               --network common \
               -p 8081:8080 \
               -e SPRING_PROFILES_ACTIVE=prod \
-              ghcr.io/${{ env.OWNER_LC }}/blog-back:latest
+              "$BACK_IMAGE"
 
             docker run -d \
               --name blog-front \
               --restart unless-stopped \
               --network common \
               -p 3000:3000 \
-              ghcr.io/${{ env.OWNER_LC }}/blog-front:latest
+              "$FRONT_IMAGE"
