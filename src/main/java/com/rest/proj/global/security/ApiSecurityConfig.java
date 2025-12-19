@@ -56,7 +56,7 @@ public class ApiSecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.addAllowedOrigin("http://localhost:3000"); // 허용할 출처 추가
-        configuration.addAllowedOrigin("https://cdpn.io"); // 추가 허용 출처
+        configuration.addAllowedOrigin("https://hj-yee.shop"); // 추가 허용 출처
         configuration.addAllowedMethod("*"); // 모든 HTTP 메서드 허용
         configuration.addAllowedHeader("*"); // 모든 요청 헤더 허용
         configuration.setAllowCredentials(true); // 쿠키 및 인증 정보 포함 허용
