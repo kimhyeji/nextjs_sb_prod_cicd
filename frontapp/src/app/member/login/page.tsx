@@ -41,19 +41,23 @@ export default function Login() {
         <input
           type="text"
           name="username"
+          className="input"
           onChange={handleChange}
           placeholder="아이디"
         />
         <input
           type="password"
           name="password"
+          className="input"
           onChange={handleChange}
           placeholder="비밀번호"
         />
-        <input type="submit" value="로그인" />
+        <input type="submit" value="로그인" className="btn btn-soft" />
       </form>
 
-      <button onClick={handleLogout}>로그아웃</button>
+      <button onClick={handleLogout} className="btn btn-soft">
+        로그아웃
+      </button>
     </>
   )
 }

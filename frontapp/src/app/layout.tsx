@@ -14,15 +14,22 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" data-theme="winter">
       <body>
-        <nav>
-          <Link href="/">홈</Link>
-          <Link href="/about">소개</Link>
-          <Link href="/article">게시판</Link>
-          <Link href="/member/login">로그인</Link>
-        </nav>
-        <ReactQueryProviders>{children}</ReactQueryProviders>
+        <header>
+          <div>
+            <Link href="/">Logo</Link>
+          </div>
+          <nav>
+            <Link href="/">홈</Link>
+            <Link href="/about">소개</Link>
+            <Link href="/article">게시판</Link>
+            <Link href="/member/login">로그인</Link>
+          </nav>
+        </header>
+        <main>
+          <ReactQueryProviders>{children}</ReactQueryProviders>
+        </main>
       </body>
     </html>
   )
