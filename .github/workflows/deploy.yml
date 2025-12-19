@@ -1,0 +1,144 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+      - 'src/**'
+      - 'build.gradle'
+      - 'Dockerfile'
+      - 'frontapp/**'
+      - 'README.md'
+
+env:
+  BACK_IMAGE_NAME: blog-back
+  FRONT_IMAGE_NAME: blog-front
+
+jobs:
+  # -----------------------------
+  # 1. Tag & Release
+  # -----------------------------
+  makeTagAndRelease:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.create_tag.outputs.new_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: create_tag
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.create_tag.outputs.new_tag }}
+          release_name: Release ${{ steps.create_tag.outputs.new_tag }}
+          body: ${{ steps.create_tag.outputs.changelog }}
+
+  # -----------------------------
+  # 2. Backend Build & Push
+  # -----------------------------
+  buildBackAndPush:
+    needs: makeTagAndRelease
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v2
+
+      - uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: owner lowercase
+        run: echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: application-secret.yml 생성
+        run: echo "${{ secrets.APPLICATION_SECRET_YML }}" > src/main/resources/application-secret.yml
+
+      - name: backend build & push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/${{ env.BACK_IMAGE_NAME }}:${{ needs.makeTagAndRelease.outputs.tag_name }}
+            ghcr.io/${{ env.OWNER_LC }}/${{ env.BACK_IMAGE_NAME }}:latest
+
+  # -----------------------------
+  # 3. Frontend Build & Push
+  # -----------------------------
+  buildFrontAndPush:
+    needs: makeTagAndRelease
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v2
+
+      - uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: owner lowercase
+        run: echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: frontend build & push
+        uses: docker/build-push-action@v3
+        with:
+          context: ./frontapp
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ secrets.FRONT_API_BASE_URL }}
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/${{ env.FRONT_IMAGE_NAME }}:${{ needs.makeTagAndRelease.outputs.tag_name }}
+            ghcr.io/${{ env.OWNER_LC }}/${{ env.FRONT_IMAGE_NAME }}:latest
+
+  # -----------------------------
+  # 4. Deploy to EC2
+  # -----------------------------
+  deploy:
+    needs: [ buildBackAndPush, buildFrontAndPush ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: AWS SSM Deploy
+        uses: peterkimzz/aws-ssm-send-command@master
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          instance-ids: ${{ secrets.AWS_EC2_INSTANCE_ID }}
+          command: |
+            docker stop blog-back blog-front || true
+            docker rm blog-back blog-front || true
+
+            docker pull ghcr.io/${{ env.OWNER_LC }}/blog-back:latest
+            docker pull ghcr.io/${{ env.OWNER_LC }}/blog-front:latest
+
+            docker run -d \
+              --name blog-back \
+              --restart unless-stopped \
+              --network common \
+              -p 8081:8080 \
+              -e SPRING_PROFILES_ACTIVE=prod \
+              ghcr.io/${{ env.OWNER_LC }}/blog-back:latest
+
+            docker run -d \
+              --name blog-front \
+              --restart unless-stopped \
+              --network common \
+              -p 3000:3000 \
+              ghcr.io/${{ env.OWNER_LC }}/blog-front:latest
