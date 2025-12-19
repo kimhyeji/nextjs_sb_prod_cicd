@@ -122,6 +122,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           instance-ids: ${{ secrets.AWS_EC2_INSTANCE_ID }}
           command: |
+            echo "SSM TEST: $(date)" > /tmp/ssm_test.txt
             set -Eeuo pipefail
 
             OWNER_LC="${{ github.repository_owner }}"
